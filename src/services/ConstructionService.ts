@@ -23,6 +23,7 @@ import {
   ConstructionPreprocessResponse,
   Operation,
 } from "../client";
+import { Extrinsic, Address } from "@polkadot/types/interfaces";
 import BN from "bn.js";
 import { decode, getTxHash, UnsignedTransaction } from "@substrate/txwrapper";
 import { u8aToHex, hexToU8a, u8aConcat } from "@polkadot/util";
@@ -288,9 +289,10 @@ export const constructionParse = async (
   const currency = getNetworkCurrencyFromRequest(constructionParseRequest);
 
   let value: any;
-  let sourceAccountAddress: string;
-  let destAccountAddress: any;
+  let sourceAccountAddress: string | Address;
+  let destAccountAddress: string | any;
 
+  console.dir(registry)
   // Parse transaction
   if (transaction.substr(0, 2) === "0x") {
     // Hex encoded extrinsic
@@ -302,7 +304,10 @@ export const constructionParse = async (
       }
     );
 
-    const transactionJSON = polkaTx.toHuman();
+    // TODO fix: REGISTRY: Error: Number can only safely store up to 53 bits (polkadot api version ?)
+    //console.log(polkaTx);
+    
+    const transactionJSON: Extrinsic = polkaTx.toHuman() as any;
     sourceAccountAddress = transactionJSON.signer;
     destAccountAddress = transactionJSON.method.args[0];
     value = polkaTx.method.args[1].toString();
@@ -342,7 +347,7 @@ export const constructionParse = async (
     Operation.constructFromObject({
       operation_identifier: new OperationIdentifier(0),
       type: "Transfer",
-      account: new AccountIdentifier(sourceAccountAddress),
+      account: new AccountIdentifier(sourceAccountAddress as string),
       amount: new Amount(new BN(value).neg().toString(), currency),
     }),
     Operation.constructFromObject({
@@ -357,9 +362,12 @@ export const constructionParse = async (
   const signers = signed ? [sourceAccountAddress] : [];
 
   // Create response
-  const response = new ConstructionParseResponse(operations, signers);
+  const response = new ConstructionParseResponse(
+    operations,
+    signers as string[]
+  );
   response.account_identifier_signers = signers.map(
-    (signer) => new AccountIdentifier(signer)
+    (signer) => new AccountIdentifier(signer as string)
   );
   return response;
 };

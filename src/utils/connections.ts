@@ -6,7 +6,7 @@ import networkIdentifiers from "../network";
 import Registry from "../offline-signing/registry";
 
 const connections = {};
-const registries = {};
+const registries: { [key: string]: Registry } = {};
 const currencies = {};
 const isOffline = process.argv.indexOf("--offline") > -1;
 
@@ -105,7 +105,7 @@ export async function getNetworkConnection(networkIdentifier) {
   return connections[nodeAddress];
 }
 
-export function getNetworkRegistryFromRequest(networkRequest) {
+export function getNetworkRegistryFromRequest(networkRequest: NetworkRequest) {
   const targetNetworkIdentifier =
     networkRequest.network_identifier || networkIdentifiers[0];
   const networkIdentifier = getNetworkIdentifier(targetNetworkIdentifier);
