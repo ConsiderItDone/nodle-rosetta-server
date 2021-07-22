@@ -1,5 +1,4 @@
-import { Client } from "rosetta-typescript-sdk";
-
+import { Error } from "../client";
 export const ERROR_NOT_IMPLEMENTED = 0;
 export const ERROR_UNAVAILABLE_OFFLINE = 1;
 export const ERROR_POLKADOT_ERROR = 2;
@@ -64,12 +63,7 @@ export const errorTypes = [
   },
 ];
 
-export function throwError(type, description?) {
+export function throwError(type: number, description?: string) {
   const error = errorTypes[type];
-  throw new Client.Error(
-    error.code,
-    error.message,
-    error.retriable,
-    description
-  );
+  throw new Error(error.code, error.message, error.retriable, description);
 }

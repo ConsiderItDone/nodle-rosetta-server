@@ -85,7 +85,7 @@ export const networkOptions = async (
     (item, index) => operationTypes.indexOf(item) === index
   );
   return new NetworkOptionsResponse(
-    new Version(rosettaVersion, nodeVersion),
+    new Version(rosettaVersion, nodeVersion.toString()),
     new Allow(operationStatuses, opTypes, errors)
   );
 };
@@ -112,12 +112,12 @@ export const networkStatus = async (
 
   // Format into correct types
   const currentBlockIdentifier = new BlockIdentifier(
-    currentBlock.block.header.number,
+    currentBlock.block.header.number.toNumber(),
     currentBlock.block.header.hash.toHex()
   );
   const genesisBlockIdentifier = new BlockIdentifier(
     genesisBlockIndex,
-    genesisBlockHash
+    genesisBlockHash.toString()
   );
 
   // Dont need any peers for now, format response

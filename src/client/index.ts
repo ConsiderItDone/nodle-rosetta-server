@@ -1,4 +1,9 @@
-import { CoinChange, Currency, Operation as IOperation } from "types";
+import {
+  CoinChange,
+  Currency,
+  Operation as IOperation,
+  SigningPayload,
+} from "types";
 
 export interface Metadata {
   [key: string]: any;
@@ -235,9 +240,100 @@ export class Error {
   retriable: boolean;
   description?: string;
   details?: { [key: string]: any };
-  constructor(code: number, message: string, retriable: boolean) {
+  constructor(
+    code: number,
+    message: string,
+    retriable?: boolean,
+    description?: string
+  ) {
     this.code = code;
     this.message = message;
     this.retriable = retriable;
+    this.description = description;
+  }
+}
+
+export class ConstructionMetadataResponse {
+  metadata: Metadata;
+  constructor(metadata: Metadata) {
+    this.metadata = metadata;
+  }
+}
+export class TransactionIdentifierResponse {
+  transaction_identifier: TransactionIdentifier;
+  metadata?: Metadata;
+  constructor(
+    transaction_identifier: TransactionIdentifier,
+    metadata?: Metadata
+  ) {
+    this.transaction_identifier = transaction_identifier;
+    this.metadata = metadata;
+  }
+}
+
+export class ConstructionCombineResponse {
+  signed_transaction: string;
+  constructor(signed_transaction: string) {
+    this.signed_transaction = signed_transaction;
+  }
+}
+
+export class ConstructionDeriveResponse {
+  address?: string;
+  account_identifier?: AccountIdentifier;
+  metadata?: {
+    [key: string]: any;
+  };
+  constructor(
+    address?: string,
+    account_identifier?: AccountIdentifier,
+    metadata?: Metadata
+  ) {
+    this.address = address;
+    this.account_identifier = account_identifier;
+    this.metadata = metadata;
+  }
+}
+
+export class ConstructionParseResponse {
+  operations: Operation[];
+  signers?: string[];
+  account_identifier_signers?: AccountIdentifier[];
+  metadata?: Metadata;
+  constructor(
+    operations: Operation[],
+    signers?: string[],
+    account_identifier_signers?: AccountIdentifier[],
+    metadata?: Metadata
+  ) {
+    this.operations = operations;
+    this.signers = signers;
+    this.account_identifier_signers = account_identifier_signers;
+    this.metadata = metadata;
+  }
+}
+
+export class ConstructionPayloadsResponse {
+  unsigned_transaction: string;
+  payloads: SigningPayload[];
+  constructor(unsigned_transaction: string, payloads: SigningPayload[]) {
+    this.unsigned_transaction = unsigned_transaction;
+    this.payloads = payloads;
+  }
+}
+
+export class ConstructionPreprocessResponse {
+  options?: {
+    [key: string]: any;
+  };
+  required_public_keys?: AccountIdentifier[];
+  constructor(
+    options?: {
+      [key: string]: any;
+    },
+    required_public_keys?: AccountIdentifier[]
+  ) {
+    this.options = options;
+    this.required_public_keys = required_public_keys;
   }
 }

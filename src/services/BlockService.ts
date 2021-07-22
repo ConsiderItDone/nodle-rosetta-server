@@ -1,4 +1,3 @@
-import { getApi } from "../api";
 import {
   BlockRequest,
   BlockTransactionRequest,
@@ -7,6 +6,7 @@ import {
 } from "types";
 
 import { getTypeDef } from "@polkadot/types";
+import { BlockHash } from "@polkadot/types/interfaces";
 import { u8aToHex } from "@polkadot/util";
 
 import {
@@ -556,7 +556,7 @@ export const blockTransaction = async (
   const { index, hash } = blockTransactionRequest.block_identifier;
 
   // Get block hash if not set
-  let blockHash = hash;
+  let blockHash: string | BlockHash = hash;
   let blockIndex = index;
   if (!blockHash) {
     blockHash = await api.rpc.chain.getBlockHash(index);
