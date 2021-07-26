@@ -27,7 +27,11 @@ import { Extrinsic, Address } from "@polkadot/types/interfaces";
 import BN from "bn.js";
 import { decode, getTxHash, UnsignedTransaction } from "@substrate/txwrapper";
 import { u8aToHex, hexToU8a, u8aConcat } from "@polkadot/util";
-import { signatureVerify, decodeAddress } from "@polkadot/util-crypto";
+import {
+  signatureVerify,
+  decodeAddress,
+  encodeAddress,
+} from "@polkadot/util-crypto";
 import { EXTRINSIC_VERSION } from "@polkadot/types/extrinsic/v4/Extrinsic";
 import { ERROR_BROADCAST_TRANSACTION, throwError } from "../utils/error-types";
 import { publicKeyToAddress } from "../utils/crypto";
@@ -38,14 +42,20 @@ import {
   getNetworkIdentifierFromRequest,
 } from "../utils/connections";
 import buildTransferTxn from "../offline-signing/txns";
-
+import Registry from "src/offline-signing/registry";
 const sigTypeEnum = {
   ed25519: 0,
   sr25519: 1,
   ecdsa: 2,
 };
 
-function jsonToTx(transaction, options: any = {}) {
+interface Options {
+  registry?: Registry;
+  [key: string]: any;
+}
+// Example
+//"{\"from\":\"4mvedcXEAY9xEoEfdCDHviBJqgVQxW9DRwvs7yPsV1HtWU9k\",\"to\":\"4kMVMYM62pA45nkACGFMBNGLjqUXVxjsw7nY4cGCR2NejajH\",\"value\":\"1000000000000\",\"tip\":0,\"nonce\":10,\"eraPeriod\":64,\"blockNumber\":141812,\"blockHash\":\"0xb71740bda60e5672cbb3ef1ddb73371cb551e80bc807df9f787935a1c9f9c788\"}"
+function jsonToTx(transaction, options: Options = {}) {
   const txParams = JSON.parse(transaction);
   const { unsignedTxn, signingPayload } = buildTransferTxn({
     ...txParams,
@@ -131,9 +141,11 @@ export const constructionSubmit = async (
   const api = await getNetworkApiFromRequest(constructionSubmitRequest);
   const signedTxHex = constructionSubmitRequest.signed_transaction;
   const registry = getNetworkRegistryFromRequest(constructionSubmitRequest);
+  //@ts-ignore
   const nonce = (
     await api.query.system.account(JSON.parse(signedTxHex).from)
-  ).nonce.toNumber();
+  ).nonce //@ts-ignore
+    .toNumber();
   if (nonce !== JSON.parse(signedTxHex).nonce) {
     return throwError(ERROR_BROADCAST_TRANSACTION);
   }
@@ -144,6 +156,7 @@ export const constructionSubmit = async (
   });
 
   try {
+    //@ts-ignore
     const txHash = await api.rpc.author.submitExtrinsic(extrinsic.toHex());
     return new TransactionIdentifierResponse({
       hash: u8aToHex(txHash).substr(2),
@@ -292,7 +305,6 @@ export const constructionParse = async (
   let sourceAccountAddress: string | Address;
   let destAccountAddress: string | any;
 
-  console.dir(registry)
   // Parse transaction
   if (transaction.substr(0, 2) === "0x") {
     // Hex encoded extrinsic
@@ -306,7 +318,7 @@ export const constructionParse = async (
 
     // TODO fix: REGISTRY: Error: Number can only safely store up to 53 bits (polkadot api version ?)
     //console.log(polkaTx);
-    
+
     const transactionJSON: Extrinsic = polkaTx.toHuman() as any;
     sourceAccountAddress = transactionJSON.signer;
     destAccountAddress = transactionJSON.method.args[0];

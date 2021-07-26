@@ -1,5 +1,6 @@
-const types = require('../nodle-types.json');
-const rpc = require('../nodle-rpc.json');
+const types = require('./nodle-types.json');
+const rpc = require('./nodle-rpc.json');
+const metadata = require('./metadata/nodle-metadata.json');
 
 module.exports = {
   blockchain: 'Nodle',
@@ -8,7 +9,7 @@ module.exports = {
   ss58Format: 37,
   properties: {
     ss58Format: 37,
-    tokenDecimals: 4,
+    tokenDecimals: 10,
     tokenSymbol: 'NODL',
     poaModule: {
       treasury: '3EnzzoFZSBeDcQ36xu8GpfMw4MU5uDmUatskoAaSg1JBxQPb', // ??
@@ -22,4 +23,5 @@ module.exports = {
   transactionVersion: 1,
   types,
   rpc,
+  metadataRpc: metadata.metadataRpc,
 };
