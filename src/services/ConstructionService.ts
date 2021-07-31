@@ -53,8 +53,7 @@ interface Options {
   registry?: Registry;
   [key: string]: any;
 }
-// Example
-//"{\"from\":\"4mvedcXEAY9xEoEfdCDHviBJqgVQxW9DRwvs7yPsV1HtWU9k\",\"to\":\"4kMVMYM62pA45nkACGFMBNGLjqUXVxjsw7nY4cGCR2NejajH\",\"value\":\"1000000000000\",\"tip\":0,\"nonce\":10,\"eraPeriod\":64,\"blockNumber\":141812,\"blockHash\":\"0xb71740bda60e5672cbb3ef1ddb73371cb551e80bc807df9f787935a1c9f9c788\"}"
+
 function jsonToTx(transaction, options: Options = {}) {
   const txParams = JSON.parse(transaction);
   const { unsignedTxn, signingPayload } = buildTransferTxn({
@@ -87,6 +86,66 @@ function jsonToTx(transaction, options: Options = {}) {
 /* Data API: Construction */
 
 /**
+ * Derive an Address from a PublicKey
+ * Derive returns the network-specific address associated with a public key. Blockchains that require an on-chain action to create an account should not implement this method.
+ *
+ * [OFFLINE]
+ * constructionDeriveRequest ConstructionDeriveRequest
+ * returns ConstructionDeriveResponse
+ * */
+
+ export const constructionDerive = async (
+  params: Params<ConstructionDeriveRequest>
+): Promise<ConstructionDeriveResponse> => {
+  const { constructionDeriveRequest } = params;
+  const networkIdentifier = getNetworkIdentifierFromRequest(
+    constructionDeriveRequest
+  );
+  const publicKeyHex = `0x${constructionDeriveRequest.public_key.hex_bytes}`;
+  const publicKeyType = constructionDeriveRequest.public_key.curve_type;
+  const address = await publicKeyToAddress(
+    publicKeyHex,
+    publicKeyType,
+    networkIdentifier.properties.ss58Format
+  );
+  return new ConstructionDeriveResponse(address);
+};
+
+/**
+ * Create a Request to Fetch Metadata
+ * Preprocess is called prior to /construction/payloads to construct a request for any metadata that is needed for transaction construction given (i.e. account nonce).
+ * The options object returned from this endpoint will be sent to the /construction/metadata endpoint UNMODIFIED by the caller (in an offline execution environment).
+ * If your Construction API implementation has configuration options, they MUST be specified in the /construction/preprocess request (in the metadata field).
+ *
+ * The request returned from this method will be used by the caller (in a different execution environment) to call the `/construction/metadata` endpoint.
+ *
+ * [OFFLINE]
+ * constructionPreprocessRequest ConstructionPreprocessRequest
+ * returns ConstructionPreprocessResponse
+ * */
+
+ export const constructionPreprocess = async (
+  params: Params<ConstructionPreprocessRequest>
+): Promise<ConstructionPreprocessResponse> => {
+  const { constructionPreprocessRequest } = params;
+  const { operations } = constructionPreprocessRequest;
+
+  // Gather public keys needed for TXs
+  const requiredPublicKeys = operations.map(
+    (operation) => new AccountIdentifier(operation.account.address)
+  );
+
+  const senderAddress = operations
+    .filter((operation) => new BN(operation.amount.value).isNeg())
+    .map((operation) => operation.account.address);
+
+  return new ConstructionPreprocessResponse(
+    { from: senderAddress[0] },
+    requiredPublicKeys
+  );
+};
+
+/**
  * Get Transaction Construction Metadata
  * Get any information required to construct a transaction for a specific network. Metadata returned here could be a recent hash to use, an account sequence number, or even arbitrary chain state. It is up to the client to correctly populate the options object with any network-specific details to ensure the correct metadata is retrieved.  It is important to clarify that this endpoint should not pre-construct any transactions for the client (this should happen in the SDK). This endpoint is left purposely unstructured because of the wide scope of metadata that could be required.  In a future version of the spec, we plan to pass an array of Rosetta Operations to specify which metadata should be received and to create a transaction in an accompanying SDK. This will help to insulate the client from chain-specific details that are currently required here.
  * Metadata returned here could be a recent hash to use, an account sequence number, or even arbitrary chain state.
@@ -100,7 +159,7 @@ function jsonToTx(transaction, options: Options = {}) {
  * returns ConstructionMetadataResponse
  * */
 
-export const constructionMetadata = async (
+ export const constructionMetadata = async (
   params: Params<ConstructionMetadataRequest>
 ): Promise<ConstructionMetadataResponse> => {
   const { constructionMetadataRequest } = params;
@@ -125,45 +184,103 @@ export const constructionMetadata = async (
 };
 
 /**
- * Submit a Signed Transaction
- * Submit a pre-signed transaction to the node. This call should not block on the transaction being included in a block.
- * Rather, it should return immediately with an indication of whether or not the transaction was included in the mempool.
- * The transaction submission response should only return a 200 status if the submitted transaction could be included in the mempool. Otherwise, it should return an error.
+ * Generate an Unsigned Transaction and Signing Payloads
+ * Payloads is called with an array of operations and the response from `/construction/metadata`. It returns an unsigned transaction blob and a collection of payloads that must be signed by particular addresses using a certain SignatureType. The array of operations provided in transaction construction often times can not specify all \"effects\" of a transaction (consider invoked transactions in Ethereum). However, they can deterministically specify the \"intent\" of the transaction, which is sufficient for construction. For this reason, parsing the corresponding transaction in the Data API (when it lands on chain) will contain a superset of whatever operations were provided during construction.
+ * It returns an unsigned transaction blob and a collection of payloads that must be signed by particular addresses using a certain SignatureType.
+ * The array of operations provided in transaction construction often times can not specify all \"effects\" of a transaction (consider invoked transactions in Ethereum).
+ * However, they can deterministically specify the \"intent\" of the transaction, which is sufficient for construction.
+ * For this reason, parsing the corresponding transaction in the Data API (when it lands on chain) will contain a superset of whatever operations were provided during construction.
  *
- * constructionSubmitRequest ConstructionSubmitRequest
- * returns ConstructionSubmitResponse
+ * [OFFLINE]
+ * constructionPayloadsRequest ConstructionPayloadsRequest
+ * returns ConstructionPayloadsResponse
  * */
 
-export const constructionSubmit = async (
-  params: Params<ConstructionSubmitRequest>
-): Promise<TransactionIdentifierResponse | void> => {
-  const { constructionSubmitRequest } = params;
-  const api = await getNetworkApiFromRequest(constructionSubmitRequest);
-  const signedTxHex = constructionSubmitRequest.signed_transaction;
-  const registry = getNetworkRegistryFromRequest(constructionSubmitRequest);
-  //@ts-ignore
-  const nonce = (
-    await api.query.system.account(JSON.parse(signedTxHex).from)
-  ).nonce //@ts-ignore
-    .toNumber();
-  if (nonce !== JSON.parse(signedTxHex).nonce) {
-    return throwError(ERROR_BROADCAST_TRANSACTION);
+ export const constructionPayloads = async (
+  params: Params<ConstructionPayloadsRequest>
+): Promise<ConstructionPayloadsResponse> => {
+  const { constructionPayloadsRequest } = params;
+  const { operations } = constructionPayloadsRequest;
+
+  // Must have 2 operations, send and receive
+  if (operations.length !== 2) {
+    throw new Error("Need atleast 2 transfer operations");
   }
 
-  const { extrinsic } = jsonToTx(constructionSubmitRequest.signed_transaction, {
-    metadataRpc: registry.metadata,
+  // Sort by sender/reciever
+  const senderOperations = operations.filter((operation) =>
+    new BN(operation.amount.value).isNeg()
+  );
+  const receiverOperations = operations.filter(
+    (operation) => !new BN(operation.amount.value).isNeg()
+  );
+
+  // Ensure we have correct amount of operations
+  if (senderOperations.length !== 1 || receiverOperations.length !== 1) {
+    throw new Error(
+      "Payloads require 1 sender and 1 receiver transfer operation"
+    );
+  }
+
+  const sendOp = senderOperations[0];
+  const receiveOp = receiverOperations[0];
+
+  // Support only transfer operation
+  if (sendOp.type !== "Transfer" || receiveOp.type !== "Transfer") {
+    throw new Error("Payload operations must be of type Transfer");
+  }
+
+  const senderAddress = sendOp.account.address;
+  const toAddress = receiveOp.account.address;
+  const { nonce, eraPeriod, blockNumber, blockHash } =
+    constructionPayloadsRequest.metadata;
+
+  // Initialize the registry
+  const registry = getNetworkRegistryFromRequest(constructionPayloadsRequest);
+
+  // Build the transfer txn
+  const txParams = {
+    from: senderAddress,
+    to: toAddress,
+    value: receiveOp.amount.value,
+    tip: 0,
+    nonce,
+    eraPeriod,
+    blockNumber,
+    blockHash,
+    version: EXTRINSIC_VERSION,
+  };
+
+  const { unsignedTxn } = buildTransferTxn({
+    ...txParams,
     registry,
   });
 
-  try {
-    //@ts-ignore
-    const txHash = await api.rpc.author.submitExtrinsic(extrinsic.toHex());
-    return new TransactionIdentifierResponse({
-      hash: u8aToHex(txHash).substr(2),
-    });
-  } catch (e) {
-    return throwError(ERROR_BROADCAST_TRANSACTION, e);
-  }
+  const extrinsicPayload = registry.registry.createType(
+    "ExtrinsicPayload",
+    unsignedTxn,
+    {
+      version: EXTRINSIC_VERSION,
+    }
+  );
+
+  // With the `ExtrinsicPayload` class, construct the actual payload to sign.
+  const actualPayload = extrinsicPayload.toU8a({ method: true });
+  const signingPayload = u8aToHex(actualPayload);
+  const signatureType = "ed25519";
+
+  // Create an array of payloads that must be signed by the caller
+  const payloads: SigningPayload[] = [
+    {
+      address: senderAddress,
+      account_identifier: new AccountIdentifier(senderAddress),
+      hex_bytes: signingPayload.substr(2),
+      signature_type: signatureType,
+    },
+  ];
+
+  const unsignedTransaction = JSON.stringify(txParams);
+  return new ConstructionPayloadsResponse(unsignedTransaction, payloads);
 };
 
 /**
@@ -176,7 +293,7 @@ export const constructionSubmit = async (
  * returns ConstructionCombineResponse
  * */
 
-export const constructionCombine = async (
+ export const constructionCombine = async (
   params: Params<ConstructionCombineRequest>
 ): Promise<ConstructionCombineResponse> => {
   const { constructionCombineRequest } = params;
@@ -233,57 +350,6 @@ export const constructionCombine = async (
 };
 
 /**
- * Derive an Address from a PublicKey
- * Derive returns the network-specific address associated with a public key. Blockchains that require an on-chain action to create an account should not implement this method.
- *
- * [OFFLINE]
- * constructionDeriveRequest ConstructionDeriveRequest
- * returns ConstructionDeriveResponse
- * */
-
-export const constructionDerive = async (
-  params: Params<ConstructionDeriveRequest>
-): Promise<ConstructionDeriveResponse> => {
-  const { constructionDeriveRequest } = params;
-  const networkIdentifier = getNetworkIdentifierFromRequest(
-    constructionDeriveRequest
-  );
-  const publicKeyHex = `0x${constructionDeriveRequest.public_key.hex_bytes}`;
-  const publicKeyType = constructionDeriveRequest.public_key.curve_type;
-  const address = await publicKeyToAddress(
-    publicKeyHex,
-    publicKeyType,
-    networkIdentifier.properties.ss58Format
-  );
-  return new ConstructionDeriveResponse(address);
-};
-
-/**
- * Get the Hash of a Signed Transaction
- * TransactionHash returns the network-specific transaction hash for a signed transaction.
- *
- * [OFFLINE]
- * constructionHashRequest ConstructionHashRequest
- * returns TransactionIdentifierResponse
- * */
-
-export const constructionHash = async (
-  params: Params<ConstructionHashRequest>
-): Promise<TransactionIdentifierResponse> => {
-  const { constructionHashRequest } = params;
-  const registry = getNetworkRegistryFromRequest(constructionHashRequest);
-  const { extrinsic } = jsonToTx(constructionHashRequest.signed_transaction, {
-    metadataRpc: registry.metadata,
-    registry,
-  });
-
-  const transactionHashHex = getTxHash(extrinsic.toHex());
-  return new TransactionIdentifierResponse({
-    hash: transactionHashHex.substr(2),
-  });
-};
-
-/**
  * Parse a Transaction
  * Parse is called on both unsigned and signed transactions to understand the intent of the formulated transaction. This is run as a sanity check before signing (after `/construction/payloads`) and before broadcast (after `/construction/combine`).
  * This is run as a sanity check before signing (after `/construction/payloads`) and before broadcast (after `/construction/combine`).
@@ -293,7 +359,7 @@ export const constructionHash = async (
  * returns ConstructionParseResponse
  * */
 
-export const constructionParse = async (
+ export const constructionParse = async (
   params: Params<ConstructionParseRequest>
 ): Promise<ConstructionParseResponse> => {
   const { constructionParseRequest } = params;
@@ -385,135 +451,69 @@ export const constructionParse = async (
 };
 
 /**
- * Generate an Unsigned Transaction and Signing Payloads
- * Payloads is called with an array of operations and the response from `/construction/metadata`. It returns an unsigned transaction blob and a collection of payloads that must be signed by particular addresses using a certain SignatureType. The array of operations provided in transaction construction often times can not specify all \"effects\" of a transaction (consider invoked transactions in Ethereum). However, they can deterministically specify the \"intent\" of the transaction, which is sufficient for construction. For this reason, parsing the corresponding transaction in the Data API (when it lands on chain) will contain a superset of whatever operations were provided during construction.
- * It returns an unsigned transaction blob and a collection of payloads that must be signed by particular addresses using a certain SignatureType.
- * The array of operations provided in transaction construction often times can not specify all \"effects\" of a transaction (consider invoked transactions in Ethereum).
- * However, they can deterministically specify the \"intent\" of the transaction, which is sufficient for construction.
- * For this reason, parsing the corresponding transaction in the Data API (when it lands on chain) will contain a superset of whatever operations were provided during construction.
+ * Get the Hash of a Signed Transaction
+ * TransactionHash returns the network-specific transaction hash for a signed transaction.
  *
  * [OFFLINE]
- * constructionPayloadsRequest ConstructionPayloadsRequest
- * returns ConstructionPayloadsResponse
+ * constructionHashRequest ConstructionHashRequest
+ * returns TransactionIdentifierResponse
  * */
 
-export const constructionPayloads = async (
-  params: Params<ConstructionPayloadsRequest>
-): Promise<ConstructionPayloadsResponse> => {
-  const { constructionPayloadsRequest } = params;
-  const { operations } = constructionPayloadsRequest;
-
-  // Must have 2 operations, send and receive
-  if (operations.length !== 2) {
-    throw new Error("Need atleast 2 transfer operations");
-  }
-
-  // Sort by sender/reciever
-  const senderOperations = operations.filter((operation) =>
-    new BN(operation.amount.value).isNeg()
-  );
-  const receiverOperations = operations.filter(
-    (operation) => !new BN(operation.amount.value).isNeg()
-  );
-
-  // Ensure we have correct amount of operations
-  if (senderOperations.length !== 1 || receiverOperations.length !== 1) {
-    throw new Error(
-      "Payloads require 1 sender and 1 receiver transfer operation"
-    );
-  }
-
-  const sendOp = senderOperations[0];
-  const receiveOp = receiverOperations[0];
-
-  // Support only transfer operation
-  if (sendOp.type !== "Transfer" || receiveOp.type !== "Transfer") {
-    throw new Error("Payload operations must be of type Transfer");
-  }
-
-  const senderAddress = sendOp.account.address;
-  const toAddress = receiveOp.account.address;
-  const { nonce, eraPeriod, blockNumber, blockHash } =
-    constructionPayloadsRequest.metadata;
-
-  // Initialize the registry
-  const registry = getNetworkRegistryFromRequest(constructionPayloadsRequest);
-
-  // Build the transfer txn
-  const txParams = {
-    from: senderAddress,
-    to: toAddress,
-    value: receiveOp.amount.value,
-    tip: 0,
-    nonce,
-    eraPeriod,
-    blockNumber,
-    blockHash,
-    version: EXTRINSIC_VERSION,
-  };
-
-  const { unsignedTxn } = buildTransferTxn({
-    ...txParams,
+ export const constructionHash = async (
+  params: Params<ConstructionHashRequest>
+): Promise<TransactionIdentifierResponse> => {
+  const { constructionHashRequest } = params;
+  const registry = getNetworkRegistryFromRequest(constructionHashRequest);
+  const { extrinsic } = jsonToTx(constructionHashRequest.signed_transaction, {
+    metadataRpc: registry.metadata,
     registry,
   });
 
-  const extrinsicPayload = registry.registry.createType(
-    "ExtrinsicPayload",
-    unsignedTxn,
-    {
-      version: EXTRINSIC_VERSION,
-    }
-  );
-
-  // With the `ExtrinsicPayload` class, construct the actual payload to sign.
-  const actualPayload = extrinsicPayload.toU8a({ method: true });
-  const signingPayload = u8aToHex(actualPayload);
-  const signatureType = "ed25519";
-
-  // Create an array of payloads that must be signed by the caller
-  const payloads: SigningPayload[] = [
-    {
-      address: senderAddress,
-      account_identifier: new AccountIdentifier(senderAddress),
-      hex_bytes: signingPayload.substr(2),
-      signature_type: signatureType,
-    },
-  ];
-
-  const unsignedTransaction = JSON.stringify(txParams);
-  return new ConstructionPayloadsResponse(unsignedTransaction, payloads);
+  const transactionHashHex = getTxHash(extrinsic.toHex());
+  return new TransactionIdentifierResponse({
+    hash: transactionHashHex.substr(2),
+  });
 };
 
 /**
- * Create a Request to Fetch Metadata
- * Preprocess is called prior to /construction/payloads to construct a request for any metadata that is needed for transaction construction given (i.e. account nonce).
- * The options object returned from this endpoint will be sent to the /construction/metadata endpoint UNMODIFIED by the caller (in an offline execution environment).
- * If your Construction API implementation has configuration options, they MUST be specified in the /construction/preprocess request (in the metadata field).
+ * Submit a Signed Transaction
+ * Submit a pre-signed transaction to the node. This call should not block on the transaction being included in a block.
+ * Rather, it should return immediately with an indication of whether or not the transaction was included in the mempool.
+ * The transaction submission response should only return a 200 status if the submitted transaction could be included in the mempool. Otherwise, it should return an error.
  *
- * The request returned from this method will be used by the caller (in a different execution environment) to call the `/construction/metadata` endpoint.
- *
- * [OFFLINE]
- * constructionPreprocessRequest ConstructionPreprocessRequest
- * returns ConstructionPreprocessResponse
+ * constructionSubmitRequest ConstructionSubmitRequest
+ * returns ConstructionSubmitResponse
  * */
 
-export const constructionPreprocess = async (
-  params: Params<ConstructionPreprocessRequest>
-): Promise<ConstructionPreprocessResponse> => {
-  const { constructionPreprocessRequest } = params;
-  const { operations } = constructionPreprocessRequest;
+export const constructionSubmit = async (
+  params: Params<ConstructionSubmitRequest>
+): Promise<TransactionIdentifierResponse | void> => {
+  const { constructionSubmitRequest } = params;
+  const api = await getNetworkApiFromRequest(constructionSubmitRequest);
+  const signedTxHex = constructionSubmitRequest.signed_transaction;
+  const registry = getNetworkRegistryFromRequest(constructionSubmitRequest);
+  //@ts-ignore
+  const nonce = (
+    await api.query.system.account(JSON.parse(signedTxHex).from)
+  ).nonce //@ts-ignore
+    .toNumber();
+  if (nonce !== JSON.parse(signedTxHex).nonce) {
+    return throwError(ERROR_BROADCAST_TRANSACTION);
+  }
 
-  // Gather public keys needed for TXs
-  const requiredPublicKeys = operations.map(
-    (operation) => new AccountIdentifier(operation.account.address)
-  );
+  const { extrinsic } = jsonToTx(constructionSubmitRequest.signed_transaction, {
+    metadataRpc: registry.metadata,
+    registry,
+  });
 
-  const senderAddress = operations
-    .filter((operation) => new BN(operation.amount.value).isNeg())
-    .map((operation) => operation.account.address);
-
-  return new ConstructionPreprocessResponse(
-    { from: senderAddress[0] },
-    requiredPublicKeys
-  );
+  try {
+    //@ts-ignore
+    const txHash = await api.rpc.author.submitExtrinsic(extrinsic.toHex());
+    return new TransactionIdentifierResponse({
+      hash: u8aToHex(txHash).substr(2),
+    });
+  } catch (e) {
+    return throwError(ERROR_BROADCAST_TRANSACTION, e);
+  }
 };
+
