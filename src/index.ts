@@ -1,13 +1,12 @@
-import { Server as RosettaServer } from "rosetta-typescript-sdk";
+import { Server as RosettaServer } from "@consideritdone/rosetta-typescript-sdk";
 import * as ServiceHandlers from "./services";
-//const { Server: RosettaServer } = require("rosetta-node-sdk");
 import { OpenApiConfig } from "types";
 
 /* */
 /* Create a server configuration */
 const Server = new RosettaServer({
-  URL_PORT: 8080,
-  URL_PATH: "localhost",
+  URL_PORT: process.env.ROSETTA_PORT || 8080,
+  URL_PATH: process.env.ROSETTA_HOST || "localhost",
 } as OpenApiConfig);
 
 /* Construction API */

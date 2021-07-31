@@ -1,5 +1,5 @@
 import { ApiPromise, WsProvider } from "@polkadot/api";
-import * as RosettaSDK from "rosetta-typescript-sdk";
+import * as RosettaSDK from "@consideritdone/rosetta-typescript-sdk";
 import { NetworkIdentifier } from "src/client";
 import { NetworkRequest } from "types";
 import networkIdentifiers from "../network";
