@@ -1,9 +1,4 @@
-import {
-  CoinChange,
-  Currency,
-  Operation as IOperation,
-  SigningPayload,
-} from "types";
+import { CoinChange, Operation as IOperation, SigningPayload } from "types";
 
 export interface Metadata {
   [key: string]: any;
@@ -335,5 +330,44 @@ export class ConstructionPreprocessResponse {
   ) {
     this.options = options;
     this.required_public_keys = required_public_keys;
+  }
+}
+
+export class MempoolResponse {
+  transaction_identifiers: TransactionIdentifier[];
+  constructor(transaction_identifiers: TransactionIdentifier[]) {
+    this.transaction_identifiers = transaction_identifiers;
+  }
+}
+
+export class MempoolTransactionResponse {
+  transaction: Transaction;
+  metadata?: Metadata;
+  constructor(transaction: Transaction, metadata?: Metadata) {
+    this.transaction = transaction;
+    this.metadata = metadata;
+  }
+}
+
+export class BlockTransactionResponse {
+  transaction: Transaction;
+  metadata?: Metadata;
+  constructor(
+    transaction: Transaction = {} as Transaction,
+    metadata?: Metadata
+  ) {
+    this.transaction = transaction;
+    this.metadata = metadata;
+  }
+}
+
+export class Currency {
+  symbol: string;
+  decimals: number;
+  metadata?: Metadata;
+  constructor(symbol: string, decimals: number, metadata?: Metadata) {
+    this.symbol = symbol;
+    this.decimals = decimals;
+    this.metadata = metadata;
   }
 }

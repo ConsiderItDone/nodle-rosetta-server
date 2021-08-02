@@ -5,7 +5,7 @@ const metadata = require('./metadata/nodle-metadata.json');
 module.exports = {
   blockchain: 'Nodle',
   network: 'mainnet',
-  nodeAddress: 'ws://3.217.156.114:9944', // This expects you have a synced local node running!
+  nodeAddress: process.env.NODE_ADDRESS,
   ss58Format: 37,
   properties: {
     ss58Format: 37,

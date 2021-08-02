@@ -54,7 +54,7 @@ interface Options {
   [key: string]: any;
 }
 
-function jsonToTx(transaction, options: Options = {}) {
+function jsonToTx(transaction: string, options: Options = {}) {
   const txParams = JSON.parse(transaction);
   const { unsignedTxn, signingPayload } = buildTransferTxn({
     ...txParams,
@@ -94,7 +94,7 @@ function jsonToTx(transaction, options: Options = {}) {
  * returns ConstructionDeriveResponse
  * */
 
- export const constructionDerive = async (
+export const constructionDerive = async (
   params: Params<ConstructionDeriveRequest>
 ): Promise<ConstructionDeriveResponse> => {
   const { constructionDeriveRequest } = params;
@@ -124,7 +124,7 @@ function jsonToTx(transaction, options: Options = {}) {
  * returns ConstructionPreprocessResponse
  * */
 
- export const constructionPreprocess = async (
+export const constructionPreprocess = async (
   params: Params<ConstructionPreprocessRequest>
 ): Promise<ConstructionPreprocessResponse> => {
   const { constructionPreprocessRequest } = params;
@@ -159,7 +159,7 @@ function jsonToTx(transaction, options: Options = {}) {
  * returns ConstructionMetadataResponse
  * */
 
- export const constructionMetadata = async (
+export const constructionMetadata = async (
   params: Params<ConstructionMetadataRequest>
 ): Promise<ConstructionMetadataResponse> => {
   const { constructionMetadataRequest } = params;
@@ -196,7 +196,7 @@ function jsonToTx(transaction, options: Options = {}) {
  * returns ConstructionPayloadsResponse
  * */
 
- export const constructionPayloads = async (
+export const constructionPayloads = async (
   params: Params<ConstructionPayloadsRequest>
 ): Promise<ConstructionPayloadsResponse> => {
   const { constructionPayloadsRequest } = params;
@@ -293,7 +293,7 @@ function jsonToTx(transaction, options: Options = {}) {
  * returns ConstructionCombineResponse
  * */
 
- export const constructionCombine = async (
+export const constructionCombine = async (
   params: Params<ConstructionCombineRequest>
 ): Promise<ConstructionCombineResponse> => {
   const { constructionCombineRequest } = params;
@@ -359,7 +359,7 @@ function jsonToTx(transaction, options: Options = {}) {
  * returns ConstructionParseResponse
  * */
 
- export const constructionParse = async (
+export const constructionParse = async (
   params: Params<ConstructionParseRequest>
 ): Promise<ConstructionParseResponse> => {
   const { constructionParseRequest } = params;
@@ -381,9 +381,6 @@ function jsonToTx(transaction, options: Options = {}) {
         isSigned: true,
       }
     );
-
-    // TODO fix: REGISTRY: Error: Number can only safely store up to 53 bits (polkadot api version ?)
-    //console.log(polkaTx);
 
     const transactionJSON: Extrinsic = polkaTx.toHuman() as any;
     sourceAccountAddress = transactionJSON.signer;
@@ -459,7 +456,7 @@ function jsonToTx(transaction, options: Options = {}) {
  * returns TransactionIdentifierResponse
  * */
 
- export const constructionHash = async (
+export const constructionHash = async (
   params: Params<ConstructionHashRequest>
 ): Promise<TransactionIdentifierResponse> => {
   const { constructionHashRequest } = params;
@@ -516,4 +513,3 @@ export const constructionSubmit = async (
     return throwError(ERROR_BROADCAST_TRANSACTION, e);
   }
 };
-

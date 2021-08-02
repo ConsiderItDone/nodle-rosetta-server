@@ -1,21 +1,33 @@
 import { ApiPromise, WsProvider } from "@polkadot/api";
-import * as RosettaSDK from "@consideritdone/rosetta-typescript-sdk";
-import { NetworkIdentifier } from "src/client";
+import {
+  DefinitionRpc,
+  DefinitionRpcSub,
+  RegistryTypes,
+} from "@polkadot/types/types";
+import { Currency } from "src/client";
 import { NetworkRequest } from "types";
-import networkIdentifiers from "../network";
+import networkIdentifiers, { SubstrateNetworkIdentifier } from "../network";
 import Registry from "../offline-signing/registry";
 
-const connections = {};
+const connections: { [key: string]: SubstrateNetworkConnection } = {};
 const registries: { [key: string]: Registry } = {};
-const currencies = {};
+const currencies: { [key: string]: Currency } = {};
 const isOffline = process.argv.indexOf("--offline") > -1;
 
 class SubstrateNetworkConnection {
-  api: any;
-  nodeAddress: any;
-  types: any;
-  rpc: any;
-  constructor({ nodeAddress, types, rpc }) {
+  api: ApiPromise;
+  nodeAddress: string;
+  types?: RegistryTypes;
+  rpc?: Record<string, Record<string, DefinitionRpc | DefinitionRpcSub>>;
+  constructor({
+    nodeAddress,
+    types,
+    rpc,
+  }: {
+    nodeAddress: string;
+    types?: RegistryTypes;
+    rpc?: Record<string, Record<string, DefinitionRpc | DefinitionRpcSub>>;
+  }) {
     this.nodeAddress = nodeAddress;
     this.types = types;
     this.rpc = rpc;
@@ -36,14 +48,14 @@ class SubstrateNetworkConnection {
   }
 }
 
-export function getNetworkCurrencyFromRequest(networkRequest) {
+export function getNetworkCurrencyFromRequest(networkRequest: NetworkRequest) {
   const targetNetworkIdentifier =
     networkRequest?.network_identifier || networkIdentifiers[0];
   const networkIdentifier = getNetworkIdentifier(targetNetworkIdentifier);
   if (networkIdentifier) {
     const { nodeAddress, properties } = networkIdentifier;
     if (!currencies[nodeAddress]) {
-      currencies[nodeAddress] = new RosettaSDK.Client.Currency(
+      currencies[nodeAddress] = new Currency(
         properties.tokenSymbol,
         properties.tokenDecimals
       );
@@ -53,9 +65,12 @@ export function getNetworkCurrencyFromRequest(networkRequest) {
   return null;
 }
 
-export function getNetworkIdentifier({ blockchain, network }): any {
+export function getNetworkIdentifier({
+  blockchain,
+  network,
+}): SubstrateNetworkIdentifier {
   for (let i = 0; i < networkIdentifiers.length; i++) {
-    const networkIdentifier: NetworkIdentifier = networkIdentifiers[i];
+    const networkIdentifier = networkIdentifiers[i];
     if (
       blockchain === networkIdentifier.blockchain &&
       network === networkIdentifier.network
@@ -83,7 +98,7 @@ export function getNetworkIdentifierFromRequest(
 }
 
 export async function getNetworkApiFromRequest(
-  networkRequest
+  networkRequest: NetworkRequest
 ): Promise<ApiPromise> {
   const networkIdentifier = getNetworkIdentifierFromRequest(networkRequest);
   const { api } = await getNetworkConnection(networkIdentifier);
