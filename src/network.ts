@@ -65,6 +65,8 @@ export class SubstrateNetworkIdentifier extends RosettaSDK.Client
     metadataRpc,
   }: NetworkIdentifierProps) {
     super(blockchain, network);
+    this.blockchain = blockchain;
+    this.network = network;
     this.nodeAddress = nodeAddress;
     this.ss58Format = ss58Format;
     this.properties = properties;

@@ -20,7 +20,7 @@ import {
   getTransactions,
   getTransactionsFromEvents,
   OPERATION_STATUSES,
-} from "src/utils/functions";
+} from "../utils/functions";
 import { Vec } from "@polkadot/types";
 
 /* Data API: Block */

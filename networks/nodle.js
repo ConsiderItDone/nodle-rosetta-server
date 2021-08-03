@@ -1,5 +1,5 @@
-const types = require('./nodle-types.json');
-const rpc = require('./nodle-rpc.json');
+const types = require('./types/nodle-types.json');
+const rpc = require('./rpc/nodle-rpc.json');
 const metadata = require('./metadata/nodle-metadata.json');
 
 module.exports = {

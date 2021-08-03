@@ -9,7 +9,7 @@ import {
   getNetworkCurrencyFromRequest,
 } from "../utils/connections";
 import { ApiPromise } from "@polkadot/api";
-import { getTransactionFromPool } from "src/utils/functions";
+import { getTransactionFromPool } from "../utils/functions";
 
 /* Data API: Mempool */
 

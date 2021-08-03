@@ -4,7 +4,7 @@ import {
   DefinitionRpcSub,
   RegistryTypes,
 } from "@polkadot/types/types";
-import { Currency } from "src/client";
+import { Currency } from "../client";
 import { NetworkRequest } from "types";
 import networkIdentifiers, { SubstrateNetworkIdentifier } from "../network";
 import Registry from "../offline-signing/registry";
