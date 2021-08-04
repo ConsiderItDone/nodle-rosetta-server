@@ -29,8 +29,7 @@ import { decode, getTxHash, UnsignedTransaction } from "@substrate/txwrapper";
 import { u8aToHex, hexToU8a, u8aConcat } from "@polkadot/util";
 import {
   signatureVerify,
-  decodeAddress,
-  encodeAddress,
+  decodeAddress
 } from "@polkadot/util-crypto";
 import { EXTRINSIC_VERSION } from "@polkadot/types/extrinsic/v4/Extrinsic";
 import { ERROR_BROADCAST_TRANSACTION, throwError } from "../utils/error-types";
@@ -489,11 +488,10 @@ export const constructionSubmit = async (
   const api = await getNetworkApiFromRequest(constructionSubmitRequest);
   const signedTxHex = constructionSubmitRequest.signed_transaction;
   const registry = getNetworkRegistryFromRequest(constructionSubmitRequest);
-  //@ts-ignore
   const nonce = (
     await api.query.system.account(JSON.parse(signedTxHex).from)
-  ).nonce //@ts-ignore
-    .toNumber();
+  ).nonce.toNumber();
+
   if (nonce !== JSON.parse(signedTxHex).nonce) {
     return throwError(ERROR_BROADCAST_TRANSACTION);
   }
