@@ -10,6 +10,10 @@ import {
 } from "../utils/connections";
 import { ApiPromise } from "@polkadot/api";
 import { getTransactionFromPool } from "../utils/functions";
+import { Keyring } from "@polkadot/api";
+import { Extrinsic } from "@polkadot/types/interfaces";
+
+const MEMPOOL_TESTING = true;
 
 /* Data API: Mempool */
 
@@ -27,6 +31,7 @@ export const mempool = async (
   const { networkRequest } = params;
   const api: ApiPromise = await getNetworkApiFromRequest(networkRequest);
 
+  MEMPOOL_TESTING && testMempool(api); //TODO remove after demo
   const transactions = await api.rpc.author.pendingExtrinsics();
   const transactionIdentifiers =
     transactions?.map(
@@ -56,11 +61,23 @@ export const mempoolTransaction = async (
     mempoolTransactionRequest
   );
   const { hash } = mempoolTransactionRequest.transaction_identifier;
+
+  /****************** TODO change after demo *******************/
+
+  MEMPOOL_TESTING && testMempool(api); 
+
   const mempoolTransactions = await api.rpc.author.pendingExtrinsics();
 
-   const transactionInPool = mempoolTransactions?.find(
-    (t) => t.hash.toString().substr(2) === hash.toString()
-  ); 
+  let transactionInPool: Extrinsic;
+
+  if (MEMPOOL_TESTING) {
+    transactionInPool = mempoolTransactions[0];
+  } else {
+    transactionInPool = mempoolTransactions?.find(
+      (t) => t.hash.toString().substr(2) === hash.toString()
+    );
+  }
+  /*************************************************************/
 
   if (!transactionInPool) return {} as MempoolTransactionResponse;
 
@@ -70,3 +87,20 @@ export const mempoolTransaction = async (
 
   return new MempoolTransactionResponse(transaction);
 };
+
+function testMempool(api: ApiPromise) {
+  try {
+    const keyring = new Keyring({ type: "sr25519" });
+    const alice = keyring.addFromUri("//Alice", { name: "Alice default" });
+    const bob = keyring.addFromUri("//Bob", { name: "Bob default" });
+    const AMOUNT = 10000;
+    api.tx.balances
+    .transfer("4kMVMYM62pA45nkACGFMBNGLjqUXVxjsw7nY4cGCR2NejajH", AMOUNT)
+    .signAndSend(alice);
+    api.tx.balances
+    .transfer("4mvedcXEAY9xEoEfdCDHviBJqgVQxW9DRwvs7yPsV1HtWU9k", AMOUNT)
+    .signAndSend(bob);
+  } catch(e) {
+    console.error(e)
+  }
+}
