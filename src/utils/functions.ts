@@ -457,7 +457,7 @@ export const getTransactionFromPool = (
   transaction: Extrinsic,
   currency: Currency
 ): Transaction => {
-  const transactionHash = transaction.hash.toString();
+  const transactionHash = transaction.hash.toString().substr(2);
   const operations = getOperationsFromExtrinsic(api, transaction, currency);
   return {
     transaction_identifier: new TransactionIdentifier(transactionHash),

@@ -20,16 +20,18 @@ import { getTransactionFromPool } from "../utils/functions";
  * networkRequest NetworkRequest
  * returns MempoolResponse
  * */
+
 export const mempool = async (
   params: Params<NetworkRequest>
 ): Promise<MempoolResponse> => {
   const { networkRequest } = params;
   const api: ApiPromise = await getNetworkApiFromRequest(networkRequest);
-  //const transactions = [];
+
   const transactions = await api.rpc.author.pendingExtrinsics();
   const transactionIdentifiers =
     transactions?.map(
-      (extrinsic) => new TransactionIdentifier(extrinsic.hash.toString())
+      (extrinsic) =>
+        new TransactionIdentifier(extrinsic.hash.toString().substr(2))
     ) || [];
   return new MempoolResponse(transactionIdentifiers);
 };
@@ -45,6 +47,7 @@ export const mempool = async (
  * mempoolTransactionRequest MempoolTransactionRequest
  * returns MempoolTransactionResponse
  * */
+
 export const mempoolTransaction = async (
   params: Params<MempoolTransactionRequest>
 ): Promise<MempoolTransactionResponse> => {
@@ -55,9 +58,9 @@ export const mempoolTransaction = async (
   const { hash } = mempoolTransactionRequest.transaction_identifier;
   const mempoolTransactions = await api.rpc.author.pendingExtrinsics();
 
-  const transactionInPool = mempoolTransactions?.find(
-    (t) => t.hash.toString() === hash.toString()
-  );
+   const transactionInPool = mempoolTransactions?.find(
+    (t) => t.hash.toString().substr(2) === hash.toString()
+  ); 
 
   if (!transactionInPool) return {} as MempoolTransactionResponse;
 
