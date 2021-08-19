@@ -4,20 +4,20 @@ export interface Metadata {
   [key: string]: any;
 }
 export class Block {
-  blockIdentifier: BlockIdentifier;
-  parentBlockIdentifier: BlockIdentifier;
+  block_identifier: BlockIdentifier;
+  parent_block_identifier: BlockIdentifier;
   timestamp: number;
   transactions: Transaction[];
   metadata?: Metadata;
   constructor(
-    blockIdentifier: BlockIdentifier,
-    parentBlockIdentifier: BlockIdentifier,
+    block_identifier: BlockIdentifier,
+    parent_block_identifier: BlockIdentifier,
     timestamp: number,
     transactions: Transaction[] = [],
     metadata?: Metadata
   ) {
-    this.blockIdentifier = blockIdentifier;
-    this.parentBlockIdentifier = parentBlockIdentifier;
+    this.block_identifier = block_identifier;
+    this.parent_block_identifier = parent_block_identifier;
     this.timestamp = timestamp;
     this.transactions = transactions;
     this.metadata = metadata;
@@ -149,9 +149,9 @@ export class AccountBalanceResponse {
 }
 
 export class NetworkListResponse {
-  networkIdentifiers: NetworkIdentifier[];
-  constructor(networkIdentifiers: NetworkIdentifier[]) {
-    this.networkIdentifiers = networkIdentifiers;
+  network_identifiers: NetworkIdentifier[];
+  constructor(network_identifiers: NetworkIdentifier[]) {
+    this.network_identifiers = network_identifiers;
   }
 }
 
